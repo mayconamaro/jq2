@@ -2,10 +2,12 @@ use std::collections::LinkedList;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
-    OpenBracket,
-    CloseBracket,
+    OpenObject,
+    CloseObject,
     Colon,
     Comma,
+    OpenArray,
+    CloseArray,
     String(String),
 }
 
@@ -33,10 +35,12 @@ pub fn tokenize(input: &str) -> LinkedList<Token> {
 
 fn consume(c: char, tokens: &mut LinkedList<Token>, state: &mut State, buffer: &mut Vec<char>) {
     match (c, *state) {
-        ('{', State::NotString) => tokens.push_back(Token::OpenBracket),
-        ('}', State::NotString) => tokens.push_back(Token::CloseBracket),
+        ('{', State::NotString) => tokens.push_back(Token::OpenObject),
+        ('}', State::NotString) => tokens.push_back(Token::CloseObject),
         (':', State::NotString) => tokens.push_back(Token::Colon),
         (',', State::NotString) => tokens.push_back(Token::Comma),
+        ('[', State::NotString) => tokens.push_back(Token::OpenArray),
+        (']', State::NotString) => tokens.push_back(Token::CloseArray),
 
         // Whitespace
         (' ', State::NotString) => (),
@@ -72,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_empty_object() {
-        let expected = LinkedList::from([Token::OpenBracket, Token::CloseBracket]);
+        let expected = LinkedList::from([Token::OpenObject, Token::CloseObject]);
         let result = tokenize("{ }");
 
         assert_eq!(expected, result);
@@ -81,11 +85,11 @@ mod tests {
     #[test]
     fn test_tokenize_simple_object() {
         let expected = LinkedList::from([
-            Token::OpenBracket,
+            Token::OpenObject,
             Token::String(String::from("a?")),
             Token::Colon,
             Token::String(String::from("a")),
-            Token::CloseBracket,
+            Token::CloseObject,
         ]);
         let result = tokenize("{ \"a?\": \"a\" }");
 
@@ -109,22 +113,27 @@ mod tests {
         /*
          * {
          *  field1:  value1,
-         *   field2:  value2
+         *   field2:  [value2, value3]
          * }
          */
         let expected = LinkedList::from([
-            Token::OpenBracket,
+            Token::OpenObject,
             Token::String(String::from("field1")),
             Token::Colon,
             Token::String(String::from("value1")),
             Token::Comma,
             Token::String(String::from("field2")),
             Token::Colon,
+            Token::OpenArray,
             Token::String(String::from("value2")),
-            Token::CloseBracket,
+            Token::Comma,
+            Token::String(String::from("value3")),
+            Token::CloseArray,
+            Token::CloseObject,
         ]);
-        let result =
-            tokenize("{\n\r\t\"field1\": \t\"value1\",\n\r\t \"field2\": \t\"value2\"\n\r}");
+        let result = tokenize(
+            "{\n\r\t\"field1\": \t\"value1\",\n\r\t \"field2\": \t[\"value2\", \"value3\"]\n\r}",
+        );
 
         assert_eq!(expected, result);
     }
