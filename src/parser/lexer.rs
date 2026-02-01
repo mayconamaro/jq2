@@ -36,12 +36,22 @@ fn consume(c: char, tokens: &mut LinkedList<Token>, state: &mut State, buffer: &
         ('{', State::NotString) => tokens.push_back(Token::OpenBracket),
         ('}', State::NotString) => tokens.push_back(Token::CloseBracket),
         (':', State::NotString) => tokens.push_back(Token::Colon),
-        ('"', State::NotString) => *state = State::String,
-        (' ', State::NotString) => (),
         (',', State::NotString) => tokens.push_back(Token::Comma),
-        (c, State::NotString) => panic!("Unsupported caracter: {}", c),
+
+        // Whitespace
+        (' ', State::NotString) => (),
+        ('\n', State::NotString) => (),
+        ('\r', State::NotString) => (),
+        ('\t', State::NotString) => (),
+
+        // String
+        // TODO: \u hex sequence escape validation
+        ('"', State::NotString) => *state = State::String,
         ('"', State::String) => add_string_token_from_buffer(tokens, state, buffer),
         (c, State::String) => buffer.push(c),
+
+        // Error
+        (c, State::NotString) => panic!("Unsupported caracter: {}", c),
     }
 }
 
@@ -95,7 +105,13 @@ mod tests {
     }
 
     #[test]
-    fn test_tokenize_multi_field_object() {
+    fn test_tokenize_multi_field_object_and_whitespaces() {
+        /*
+         * {
+         *  field1:  value1,
+         *   field2:  value2
+         * }
+         */
         let expected = LinkedList::from([
             Token::OpenBracket,
             Token::String(String::from("field1")),
@@ -107,7 +123,8 @@ mod tests {
             Token::String(String::from("value2")),
             Token::CloseBracket,
         ]);
-        let result = tokenize("{ \"field1\": \"value1\", \"field2\": \"value2\"}");
+        let result =
+            tokenize("{\n\r\t\"field1\": \t\"value1\",\n\r\t \"field2\": \t\"value2\"\n\r}");
 
         assert_eq!(expected, result);
     }
