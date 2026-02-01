@@ -5,6 +5,7 @@ pub enum Token {
     OpenBracket,
     CloseBracket,
     Colon,
+    Comma,
     String(String),
 }
 
@@ -37,6 +38,7 @@ fn consume(c: char, tokens: &mut LinkedList<Token>, state: &mut State, buffer: &
         (':', State::NotString) => tokens.push_back(Token::Colon),
         ('"', State::NotString) => *state = State::String,
         (' ', State::NotString) => (),
+        (',', State::NotString) => tokens.push_back(Token::Comma),
         (c, State::NotString) => panic!("Unsupported caracter: {}", c),
         ('"', State::String) => add_string_token_from_buffer(tokens, state, buffer),
         (c, State::String) => buffer.push(c),
@@ -90,5 +92,23 @@ mod tests {
     #[should_panic]
     fn test_tokenize_incomplete_string() {
         tokenize(" { \"ab\": \"thisstringisnotgoingtoend } ");
+    }
+
+    #[test]
+    fn test_tokenize_multi_field_object() {
+        let expected = LinkedList::from([
+            Token::OpenBracket,
+            Token::String(String::from("field1")),
+            Token::Colon,
+            Token::String(String::from("value1")),
+            Token::Comma,
+            Token::String(String::from("field2")),
+            Token::Colon,
+            Token::String(String::from("value2")),
+            Token::CloseBracket,
+        ]);
+        let result = tokenize("{ \"field1\": \"value1\", \"field2\": \"value2\"}");
+
+        assert_eq!(expected, result);
     }
 }
